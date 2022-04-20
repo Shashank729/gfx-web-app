@@ -12,7 +12,7 @@ const BUTTON = styled.button<{ $height: string; $status: Status; $width: string;
   border: none;
   border-radius: ${({ $radius }) => $radius};
   ${({ theme }) => theme.roundedBorders}
-  background-color: ${({ $status, theme }) => ($status === 'action' ? theme.secondary3 : theme.text1h)};
+  background-color: ${({ $status, theme }) => ($status === 'action' ? theme.secondary3 : theme.bg10)};
   cursor: ${({ $status }) => ($status === 'action' ? 'pointer' : $status)};
   transition: background-color ${({ theme }) => theme.mainTransitionTime} ease-in-out;
 
@@ -28,6 +28,11 @@ const BUTTON = styled.button<{ $height: string; $status: Status; $width: string;
     font-size: 12px;
     font-weight: bold;
     color: white;
+  }
+
+  &:disabled {
+    background: grey;
+    cursor: not-allowed;
   }
 `
 
