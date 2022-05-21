@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { FC } from 'react'
 import styled from 'styled-components'
 import { Tooltip } from '../../components/Tooltip'
-import { moneyFormatter } from '../../utils/math'
+import { moneyFormatter, nFormatter } from '../../utils/math'
+import { Skeleton } from 'antd'
 
-const STYLED_TITLE = styled.div`
+export const STYLED_TITLE = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -29,7 +30,7 @@ const STYLED_TITLE = styled.div`
   }
 `
 
-const STYLED_NAME = styled.div`
+export const STYLED_NAME = styled.div`
   display: flex;
   align-items: center;
   .text {
@@ -56,7 +57,7 @@ const STYLED_NAME = styled.div`
   }
 `
 
-const STYLED_EARNED = styled.div`
+export const STYLED_EARNED = styled.div`
   font-family: Montserrat;
   font-size: 17px;
   font-weight: 600;
@@ -64,6 +65,9 @@ const STYLED_EARNED = styled.div`
   text-align: center;
 `
 
+export const Loader: FC = () => {
+  return <Skeleton.Button active size="small" style={{ display: 'flex', height: '15px' }} />
+}
 const HeaderTooltip = (text: string) => {
   return (
     <img className="info-icon" src={`/img/assets/info-icon.svg`} alt="" /> && (
@@ -87,7 +91,7 @@ export const columns = [
     title: Title('Name', '', true),
     dataIndex: 'name',
     key: 'name',
-    width: '15%',
+    width: '15',
     render: (text, record) => (
       <STYLED_NAME>
         <img
@@ -100,22 +104,50 @@ export const columns = [
     )
   },
   {
-    title: Title('Earned', '', true),
+    title: Title('Balance', '', true),
+    dataIndex: 'currentlyStaked',
+    key: 'Balance',
+    width: '16.6%',
+    render: (text) => {
+      return <div className="liquidity normal-text"> {text >= 0 ? `${moneyFormatter(text)}` : <Loader />}</div>
+    }
+  },
+  {
+    title: Title(
+      'Total Earned',
+      'The total profit and loss from SSL and is measured by comparing the total value of a pool’s assets (excluding trading fees) to their value if they had not been traded and instead were just held',
+      true
+    ),
     dataIndex: 'earned',
     key: 'earned',
-    width: '15%',
-    render: (text) => <STYLED_EARNED>{text ? parseFloat(text).toFixed(3) : 0.0}</STYLED_EARNED>
+    width: '16.6%',
+    render: (text) => <div className="liquidity normal-text">{text >= 0 ? `${moneyFormatter(text)}` : <Loader />}</div>
   },
   {
     title: Title('APR', 'Yearly deposit earned on your deposit.', true),
     dataIndex: 'apr',
     key: 'apr',
-    render: (text) => <div className="apr normal-text">{`${(text * 100).toFixed(2)}%`}</div>
+    width: '16.6%',
+    render: (text) => <div className="apr normal-text">{text ? `${text.toFixed(0)}%` : <Loader />}</div>
   },
   {
     title: Title('Liquidity', "Total value of funds in this farm's liquidity pool.", true),
     dataIndex: 'liquidity',
+    width: '16.6%',
     key: 'liquidity',
-    render: (text) => <div className="liquidity normal-text">{text ? `$ ${moneyFormatter(text)}` : 0.0}</div>
+    render: (text) => (
+      <div className="liquidity normal-text">{text >= 0 ? `$ ${moneyFormatter(text)}` : <Loader />}</div>
+    )
+  },
+  {
+    title: Title('7d Volume', '', true),
+    dataIndex: 'volume',
+    width: '16.6%',
+    key: 'volume',
+    render: (text) => (
+      <div className="liquidity normal-text">
+        {text === '-' ? `-` : text >= 0 ? `$ ${moneyFormatter(text)}` : <Loader />}
+      </div>
+    )
   }
 ]

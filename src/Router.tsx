@@ -1,14 +1,21 @@
 import React, { FC } from 'react'
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom'
 import { AppLayout } from './layouts'
-import { Crypto, Farm, NFTs, Synths, Swap } from './pages'
+import { Farm, NFTs, Swap } from './pages'
+import {
+  NavCollapseProvider,
+  NFTProfileProvider,
+  OrderProvider,
+  PriceFeedProvider,
+  TradeHistoryProvider
+} from './context'
+import Restricted from './pages/Restricted'
+import { CryptoContent } from './pages/TradeV2/MovableContainer'
 import useBlacklisted from './utils/useBlacklisted'
-import { NavCollapseProvider, NFTProfileProvider } from './context'
-import { GenericNotFound } from './pages/InvalidUrl'
 
 export const Router: FC = () => {
   const blacklisted = useBlacklisted()
-  console.log('blacklisted', blacklisted)
+  console.log('blacklisted', blacklisted, process.env.NODE_ENV)
 
   return (
     <BrowserRouter>
@@ -17,31 +24,30 @@ export const Router: FC = () => {
       <NavCollapseProvider>
         <AppLayout>
           <Switch>
-            <Route exact path="/swap" component={Swap} />
-            <Route exact path="/trade" component={Crypto} />
-            <Route
-              exact
-              path="/synths"
-              component={() => {
-                if (blacklisted) {
-                  window.location.href = 'https://goosefx.io/restricted'
-                  return null
-                } else {
-                  return <Synths />
-                }
-              }}
-            />
+            <Route exact path="/swap/:tradePair?">
+              {blacklisted ? <Restricted /> : <Swap />}
+            </Route>
+            <Route exact path="/trade">
+              {blacklisted ? (
+                <Restricted />
+              ) : (
+                <PriceFeedProvider>
+                  <TradeHistoryProvider>
+                    <OrderProvider>
+                      <CryptoContent />
+                    </OrderProvider>
+                  </TradeHistoryProvider>
+                </PriceFeedProvider>
+              )}
+            </Route>
             <Route path="/NFTs">
               <NFTProfileProvider>
                 <NFTs />
               </NFTProfileProvider>
             </Route>
-            <Route exact path="/farm" component={Farm} />
-            {window.location.href && !window.location.href.includes('/NFTs/') && (
-              <Route>
-                <GenericNotFound />
-              </Route>
-            )}
+            <Route exact path="/farm">
+              {blacklisted ? <Restricted /> : <Farm />}
+            </Route>
           </Switch>
         </AppLayout>
       </NavCollapseProvider>

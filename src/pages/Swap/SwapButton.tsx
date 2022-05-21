@@ -13,9 +13,10 @@ enum State {
   PoolNotFound = 4
 }
 
-const SWAP_BUTTON = styled(MainButton)`
-  min-width: 170px;
+const SWAP_BUTTON = styled(MainButton)<{ status: any }>`
+  width: 220px;
   padding: 0 32px;
+  background-color: ${({ status }) => (status === 'action' ? '#6b33b0' : '#202020')};
 `
 
 const TEXT = styled.span`
@@ -54,6 +55,7 @@ export const SwapButton: FC<{ exchange?: (any: any) => void; route: any }> = ({ 
     switch (state) {
       case State.CanSwap:
       case State.Connect:
+      case State.Enter:
         return 'action'
       case State.BalanceExceeded:
       // case State.PoolNotFound:
@@ -81,7 +83,7 @@ export const SwapButton: FC<{ exchange?: (any: any) => void; route: any }> = ({ 
   )
 
   return (
-    <SWAP_BUTTON height="50px" loading={loading} status={buttonStatus} onClick={handleClick}>
+    <SWAP_BUTTON height="56px" loading={loading} status={buttonStatus} onClick={handleClick}>
       <TEXT>{content}</TEXT>
     </SWAP_BUTTON>
   )

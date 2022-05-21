@@ -13,6 +13,10 @@ export const Size: FC = () => {
   const { getTokenInfoFromSymbol } = useTokenRegistry()
 
   const ask = useMemo(() => getAskSymbolFromPair(selectedCrypto.pair), [getAskSymbolFromPair, selectedCrypto.pair])
+  const assetIcon = useMemo(
+    () => `/img/${selectedCrypto.type}/${selectedCrypto.type === 'synth' ? `g${ask}` : ask}.svg`,
+    [ask, selectedCrypto.type]
+  )
   const tokenInfo = useMemo(
     () => getTokenInfoFromSymbol(getSymbolFromPair(selectedCrypto.pair, order.side)),
     [getSymbolFromPair, getTokenInfoFromSymbol, order.side, selectedCrypto.pair]
@@ -22,6 +26,17 @@ export const Size: FC = () => {
   const localCSS = css`
     .order-size {
       padding: 0 2px;
+      margin-bottom: 10px;
+    }
+    .order-size .symbol-name {
+      font-size: 15px;
+      line-height: 50px;
+    }
+    .symbol-name .asset-icon {
+      height: 25px;
+      width: 25px;
+      margin-right: 5px;
+      margin-bottom: 3px;
     }
 
     .order-size .ant-input-affix-wrapper {
@@ -31,6 +46,20 @@ export const Size: FC = () => {
     .order-size .ant-slider {
       flex: 1;
       margin: 8px;
+    }
+
+    .order-size .ant-slider .ant-slider-rail {
+      height: 10px;
+    }
+
+    .order-size .ant-slider:hover .ant-slider-track {
+      background-color: #9625ae !important;
+    }
+    .order-size .ant-slider:hover .ant-slider-handle:not(.ant-tooltip-open) {
+      background-color: #9625ae;
+    }
+    .order-size .ant-slider-track {
+      background-color: #9625ae;
     }
   `
 
@@ -48,7 +77,12 @@ export const Size: FC = () => {
         onFocus={() => setFocused('size')}
         pattern="\d+(\.\d+)?"
         placeholder={`Amount to ${order.side}`}
-        suffix={<span>{ask}</span>}
+        suffix={
+          <span className="symbol-name">
+            <img className="asset-icon" src={assetIcon} alt="" />
+            {ask}
+          </span>
+        }
         value={order.size || undefined}
       />
       {order.side === 'sell' && (
@@ -60,6 +94,15 @@ export const Size: FC = () => {
             onChange={(size) => setOrder((prevState) => ({ ...prevState, size }))}
             step={selectedCrypto.market?.minOrderSize}
             value={order.size}
+            trackStyle={{
+              height: '10px'
+            }}
+            handleStyle={{
+              height: '20px',
+              width: '20px',
+              background: 'linear-gradient(55.89deg, #8D26AE 21.49%, #D4D3FF 88.89%)',
+              border: '2px solid #FFFFFF'
+            }}
           />
           <span
             onClick={() => {

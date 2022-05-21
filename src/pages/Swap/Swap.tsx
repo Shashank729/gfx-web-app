@@ -8,32 +8,48 @@ import { SwapButton } from './SwapButton'
 import { SwapFrom } from './SwapFrom'
 import { SwapTo } from './SwapTo'
 import { Modal } from '../../components'
-import { useDarkMode, useSwap, SwapProvider, useSlippageConfig, ENDPOINTS, useConnectionConfig } from '../../context'
-import { CenteredImg, SpaceBetweenDiv } from '../../styles'
+import { SkeletonCommon } from '../NFTs/Skeleton/SkeletonCommon'
+import {
+  useDarkMode,
+  useSwap,
+  SwapProvider,
+  useSlippageConfig,
+  ENDPOINTS,
+  useConnectionConfig,
+  useTokenRegistry
+} from '../../context'
+import { CenteredImg, SpaceBetweenDiv, CenteredDiv, SVGDynamicReverseMode } from '../../styles'
 import { JupiterProvider, useJupiter } from '@jup-ag/react-hook'
 import { PublicKey } from '@solana/web3.js'
 import { TOKEN_LIST_URL } from '@jup-ag/core'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { ILocationState } from '../../types/app_params.d'
-import { notify, moneyFormatter } from '../../utils'
+import { notify, moneyFormatter, nFormatter } from '../../utils'
+import { CURRENT_SUPPORTED_TOKEN_LIST } from '../../constants'
+import { useParams } from 'react-router-dom'
 
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
 
+//#region styles
 const WRAPPER = styled.div`
   color: ${({ theme }) => theme.text1};
-  height: calc(100vh - 81px);
+  min-height: calc(100vh - 58px);
   width: 100vw;
+  font-family: Montserrat;
+  font-stretch: normal;
+  font-style: normal;
 `
 
 const INNERWRAPPER = styled.div<{ $desktop: boolean }>`
   display: flex;
   max-height: 80%;
-  margin-top: 10%;
+  padding-top: 10%;
   justify-content: ${({ $desktop }) => ($desktop ? 'space-between' : 'space-around')};
   align-items: center;
   color: ${({ theme }) => theme.text1};
   width: 100vw;
+  margin-bottom: 28px;
 `
 
 const SETTING_MODAL = styled(Modal)`
@@ -52,23 +68,25 @@ const BODY = styled.div`
   ${({ theme }) => theme.measurements('100%')}
 `
 
-const HEADER_TITLE = styled.span`
-  font-weight: 600;
-  font-size: 30px;
-  line-height: 37px;
-  color: ${({ theme }) => theme.text1};
+const HEADER_TITLE = styled(CenteredDiv)`
+  span {
+    font-weight: 600;
+    font-size: 20px;
+    font-family: Montserrat;
+    color: ${({ theme }) => theme.text1};
+  }
 `
 
 const TOKEN_WRAPPER = styled.div`
   ${({ theme }) => theme.flexColumnNoWrap}
   align-items: center;
-  height: 100%;
-  width: 400px;
-  padding: ${({ theme }) => theme.margin(4)};
+  min-height: 527px;
+  width: 326px;
+  font-family: 'Montserrat';
+  padding: ${({ theme }) => theme.margin(3)};
+  padding-left: ${({ theme }) => theme.margin(4)};
   border-radius: 0px 20px 20px 0px;
   background: ${({ theme }) => theme.swapSides1};
-
-  ${({ theme }) => theme.largeShadow}
 `
 
 const TokenTitle = styled.div`
@@ -79,23 +97,31 @@ const TokenTitle = styled.div`
 
 const SmallTitle = styled.div`
   font-size: 15px;
+  font-weight: 600;
   color: ${({ theme }) => theme.text12};
 `
 
 const AltSmallTitle = styled.div`
   font-size: 12px;
+  font-weight: 600;
   color: ${({ theme }) => theme.text12};
 `
 
 const SmallTitleFlex = styled.div`
+  margin: 4px 0;
   font-size: 15px;
   display: flex;
   align-items: center;
   color: ${({ theme }) => theme.text12};
+
+  .token-name {
+    font-weight: 600;
+  }
 `
 
 const SmallerTitle = styled.div`
   font-size: 15px;
+  font-weight: 600;
   background: linear-gradient(90.25deg, #f7931a 2.31%, #dc1fff 99.9%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -105,48 +131,69 @@ const SmallerTitle = styled.div`
 const TokenHeader = styled.div`
   display: flex;
   width: 100%;
-  padding: 1rem;
+  margin-bottom: 18px;
+  align-items: center;
 `
 
-const AlternativeHeader = styled.div<{ $clicked?: boolean }>`
-  display: flex;
-  border-radius: 20px;
-  background: ${({ theme, $clicked }) =>
-    $clicked ? 'linear-gradient(90deg, rgba(247, 147, 26, 0.1) 0%, rgba(220, 31, 255, 0.1) 100%)' : theme.bg9};
-  border-color: ${({ theme, $clicked }) =>
-    $clicked ? 'linear-gradient(90deg, rgba(247, 147, 26, 0.1) 0%, rgba(220, 31, 255, 0.1) 100%)' : theme.bg9};
-  min-width: 350px !important;
+const SWAP_ROUTE_ITEM = styled.div<{ $clicked?: boolean; $cover: string }>`
+  min-width: 330px !important;
   height: 100px;
-  justify-content: center;
-  align-items: center;
-  padding: 0.75rem;
-  margin: 0.75rem;
+  border-radius: 15px;
+  padding: 1px;
+  margin-right: ${({ theme }) => theme.margin(3.5)};
+  background: ${({ theme, $clicked }) =>
+    $clicked ? 'linear-gradient(90deg,rgba(247,147,26,0.5) 0%,rgba(220,31,255,0.5) 100%)' : theme.bg1};
+  box-shadow: 0 6px 9px 0 rgba(36, 36, 36, 0.1);
   cursor: pointer;
+
+  .inner-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    background: ${({ theme, $clicked, $cover }) => ($clicked ? $cover : 'transparent')};
+    border-radius: 15px;
+    padding: ${({ theme }) => theme.margin(2)};
+
+    .content {
+      width: 67%;
+
+      div {
+        ${({ theme }) => theme.ellipse}
+      }
+    }
+    .price {
+      margin-left: 4px;
+      width: 30%;
+    }
+  }
 `
 
 const TokenDetail = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding: 1rem;
+  padding: ${({ theme }) => theme.margin(1.5)} 0;
 `
 
 const SubHeader = styled.div`
-  margin-left: 1rem;
-  height: 40px;
+  margin-left: 1.25rem;
+  height: 48px;
 `
 
 const Socials = styled.div`
   display: flex;
-  justify-content: space-around;
-  width 90%;
-  margin-top: 3rem;
+  justify-content: space-between;
+  width 100%;
+  margin-top: auto;
 `
 
 const SocialsButton = styled.div`
   background-color: ${({ theme }) => theme.bg12};
   color: ${({ theme }) => theme.text14};
-  padding: 0.5rem 1rem 0.5rem 1rem;
+  padding: ${({ theme }) => theme.margin(0.5)} ${({ theme }) => theme.margin(1.5)};
   border-radius: 1rem;
   font-size: 12px;
   cursor: pointer;
@@ -158,7 +205,8 @@ const CLICKER_ICON = styled(CenteredImg)`
   ${({ theme }) => theme.roundedBorders}
 `
 const SMALL_CLICKER_ICON = styled(CenteredImg)`
-  ${({ theme }) => theme.measurements(theme.margin(2))}
+  height: 20px;
+  width: 20px;
   margin-right: ${({ theme }) => theme.margin(1)};
   ${({ theme }) => theme.roundedBorders}
 `
@@ -167,51 +215,57 @@ const PRICE_WRAPPER = styled.div`
   ${({ theme }) => theme.flexColumnNoWrap}
   align-items: center;
   height: 100%;
-  width: 400px;
+  width: 326px;
+  font-family: Montserrat;
   border-radius: 20px 0px 0px 20px;
-  padding: ${({ theme }) => theme.margin(4)};
+  padding: ${({ theme }) => theme.margin(3)};
   background: ${({ theme }) => theme.swapSides2};
-  ${({ theme }) => theme.largeShadow}
 `
 
-const ALTERNATIVE_WRAPPER = styled.div<{ $less: boolean }>`
-  display: flex;
+const SWAP_ROUTES = styled.div<{ $less: boolean }>`
   position: relative;
-  align-items: flex-end;
-  width: 95%;
-  justify-content: ${({ $less }) => ($less ? 'center' : 'flex-start')};
-  margin-left: 2.5%;
-  margin-top: 2.5%;
-  overflow-x: auto;
-  height: 20%;
+
+  .swap-content {
+    display: flex;
+    justify-content: ${({ $less }) => ($less ? 'center' : 'flex-start')};
+    align-items: flex-end;
+    margin: 0 32px 12px;
+    padding: 32px 0;
+    overflow-x: auto;
+    height: 20%;
+  }
+
+  .action {
+    position: absolute;
+    top: 0;
+    right: 32px;
+  }
 `
 
 const BestPrice = styled.div`
   position: absolute;
   font-size: 12px;
-  margin-top: -85px;
-  margin-left: 300px;
-  width: 75px;
+  line-height: 12px;
+  font-weight: 600;
+  margin-top: -90px;
+  margin-left: 230px;
   text-align: center;
-  padding: 0.25rem;
-  border-radius: 0.5rem;
-  background-color: ${({ theme }) => theme.text3};
+  padding: 8px;
+  border-radius: 0.35rem;
+  background-color: #be2cff;
+  color: white;
 `
 
 const ShowLess = styled.div`
-  position: absolute;
   font-size: 18px;
-  top: 0px;
-  right: 60px;
+  font-weight: 600;
   border-radius: 0.5rem;
   cursor: pointer;
 `
 
 const ShowMore = styled.div`
-  position: absolute;
   font-size: 18px;
-  top: 50%;
-  right: 15%;
+  font-weight: 600;
   border-radius: 0.5rem;
   cursor: pointer;
 `
@@ -219,7 +273,6 @@ const ShowMore = styled.div`
 const PriceHeader = styled.div`
   display: flex;
   width: 100%;
-  padding: 1rem;
   align-items: center;
 `
 
@@ -231,7 +284,6 @@ const PriceHeader = styled.div`
 const PriceTitle = styled.div`
   font-weight: 600;
   font-size: 22px;
-  margin-right: 1rem;
   background: linear-gradient(90.25deg, #f7931a 2.31%, #dc1fff 99.9%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -253,13 +305,13 @@ const HEADER_WRAPPER = styled(SpaceBetweenDiv)<{ $iconSize: string }>`
   }
 
   .jup-icon {
-    height: 25px;
+    height: 22px;
+    margin-left: ${({ theme }) => theme.margin(1)};
   }
 
   .smaller-header-icon {
-    height: 24px;
-    width: 24px;
-    margin-top: 5px;
+    height: 40px;
+    width: 40px;
     cursor: pointer;
   }
 `
@@ -269,17 +321,20 @@ const SETTING_WRAPPER = styled(CenteredImg)`
   height: 40px;
   width: 40px;
   border-radius: 50%;
-  padding: 0.5rem;
-  background-color: ${({ theme }) => theme.bg10};
 `
 
 const SWITCH = styled(CenteredImg)<{ measurements: number }>`
   position: absolute;
-  top: calc(50% - ${({ measurements }) => measurements}px / 2 + ${({ theme }) => theme.margin(2)});
+  top: calc(50% - ${({ measurements }) => measurements}px / 2 + ${({ theme }) => theme.margin(3)});
   left: calc(50% - ${({ measurements }) => measurements}px / 2);
   ${({ measurements, theme }) => theme.measurements(measurements + 'px')}
-  z-index: 1;
   cursor: pointer;
+  z-index: 1;
+
+  .swap-switch {
+    height: auto;
+    width: auto;
+  }
 `
 
 const SWAP_CONTENT = styled.div`
@@ -293,6 +348,7 @@ const SWAP_CONTENT = styled.div`
   background-color: ${({ theme }) => theme.bg9};
   ${({ theme }) => theme.largeShadow}
 `
+//#endregion
 
 const SwapContent: FC<{ exchange?: (any: any) => void; routes: any; clickNo }> = ({ exchange, routes, clickNo }) => {
   const location = useLocation<ILocationState>()
@@ -325,7 +381,16 @@ const SwapContent: FC<{ exchange?: (any: any) => void; routes: any; clickNo }> =
     setSettingsModalVisible(true)
   }
 
-  const height = '80px'
+  const dateString = (date: Date) => {
+    let datestring = date.toString().split(' ')
+    let month = datestring[1]
+    let day = datestring[2]
+    let time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    return `${month} ${day}, ${time}`
+  }
+
+  const height = '65px'
+
   const localCSS = css`
     .swap-input {
       height: ${height};
@@ -333,6 +398,7 @@ const SwapContent: FC<{ exchange?: (any: any) => void; routes: any; clickNo }> =
       border: none;
       padding-right: 20px;
       font-size: 16px;
+      font-weight: 600;
     }
 
     .ant-modal-centered {
@@ -353,12 +419,13 @@ const SwapContent: FC<{ exchange?: (any: any) => void; routes: any; clickNo }> =
       </SETTING_MODAL>
       <HEADER_WRAPPER $iconSize="40px">
         <HEADER_TITLE>
-          Swap <img src={`/img/crypto/Jupiter.svg`} alt="jupiter-icon" className={'jup-icon'} />
+          <span>{dateString(new Date())}</span>
+          <img src={`/img/crypto/jup_${mode}.svg`} alt="jupiter-icon" className={'jup-icon'} />
         </HEADER_TITLE>
 
         <div>
           <div onClick={refreshRates}>
-            <img src={`/img/assets/refresh_rate.svg`} alt="refresh-icon" className={'header-icon'} />
+            <img src={`/img/assets/refresh.svg`} alt="refresh-icon" className={'header-icon'} />
           </div>
           <SETTING_WRAPPER onClick={onClick}>
             <img src={`/img/assets/settings_${mode}_mode.svg`} alt="settings" className={'smaller-header-icon'} />
@@ -376,7 +443,7 @@ const SwapContent: FC<{ exchange?: (any: any) => void; routes: any; clickNo }> =
             switchTokens()
           }}
         >
-          <img src={`/img/assets/swap_switch_${mode}_mode.svg`} alt="switch" />
+          <img className={`swap-switch`} src={`/img/assets/swap_switch.svg`} alt="switch" />
         </SWITCH>
         <SwapTo height={height} />
       </BODY>
@@ -385,7 +452,45 @@ const SwapContent: FC<{ exchange?: (any: any) => void; routes: any; clickNo }> =
   )
 }
 
+const COPY = styled.div`
+  .copy-button {
+    position: relative;
+    margin-left: 8px;
+    color: #8a8a8a;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 18px;
+    cursor: pointer;
+  }
+
+  .copied:after {
+    content: 'Copied!';
+    position: absolute;
+    display: inline;
+    left: 0;
+    bottom: 0;
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 18px;
+    animation: 1s ease-in-out 0s 1 normal forwards running copyit;
+  }
+
+  @keyframes copyit {
+    0% {
+      bottom: 1px;
+      opacity: 1;
+    }
+    100% {
+      bottom: 1.7em;
+      opacity: 0;
+    }
+  }
+`
+
 const TokenContent: FC = () => {
+  const [socials, setSocials] = useState([])
+  const [copiedAction, setCopiedAction] = useState(false)
   //CoinGeckoClient
   const { tokenA } = useSwap()
   const [tokenDetails, setDetails] = useState([
@@ -395,19 +500,29 @@ const TokenContent: FC = () => {
     { name: 'Holders', value: '0' }
   ])
 
-  const [socials, setSocials] = useState([])
-
-  const coinsIds = {
-    SOL: 'solana',
-    USDC: 'usd-coin'
-  }
   const truncate = (address: string) => {
     return address.slice(0, 7) + '...' + address.slice(-6)
   }
 
   useEffect(() => {
+    try {
+      fetchCoinGecko()
+    } catch (error) {
+      console.log(error)
+    }
+  }, [tokenA])
+
+  const handleCopyTokenMint = (e) => {
+    setCopiedAction(true)
+    navigator.clipboard.writeText(tokenA.address)
+    setTimeout(() => setCopiedAction(false), 800)
+  }
+
+  const fetchCoinGecko = async () => {
+    const tokens = await CoinGeckoClient.coins.list()
     if (tokenA) {
-      CoinGeckoClient.coins.fetch(coinsIds[tokenA.symbol], {}).then(async (data: any) => {
+      const token = tokens.data.find((i) => i.symbol.toLowerCase() === tokenA.symbol.toLowerCase())
+      CoinGeckoClient.coins.fetch(token?.id || null, {}).then(async (data: any) => {
         data = data.data
         const fetchData = await fetch('https://public-api.solscan.io/token/holders?tokenAddress=' + tokenA.address)
         const res = await fetchData.json()
@@ -429,32 +544,32 @@ const TokenContent: FC = () => {
         //   ]
         // })
         setDetails([
-          { name: 'Price', value: data.market_data.current_price.usd, currency: '$' },
+          { name: 'Price', value: data?.market_data?.current_price?.usd || '0.0', currency: '$' },
           {
             name: 'FDV',
             value:
               moneyFormatter(
                 Math.floor(
-                  data.market_data.fully_diluted_valuation.usd ||
-                    data.market_data.total_supply * data.market_data.current_price.usd
+                  data?.market_data?.fully_diluted_valuation?.usd ||
+                    data?.market_data?.total_supply * data?.market_data?.current_price?.usd
                 )
               ) || '0',
             currency: '$'
           },
           {
             name: 'Max Total Supply',
-            value: Math.floor(data.market_data.max_supply || data.market_data.total_supply).toLocaleString() || '0'
+            value: Math.floor(data?.market_data?.max_supply || data?.market_data?.total_supply)?.toLocaleString() || '0'
           },
-          { name: 'Holders', value: res?.total.toLocaleString() || 0 }
+          { name: 'Holders', value: res?.total?.toLocaleString() || 0 }
         ])
         setSocials([
-          { name: 'Twitter', link: 'https://twitter.com/' + data.links.twitter_screen_name },
+          { name: 'Twitter', link: 'https://twitter.com/' + data?.links?.twitter_screen_name },
           { name: 'Coingecko', link: 'https://coingecko.com' },
-          { name: 'Website', link: data.links.homepage[0] }
+          { name: 'Website', link: data?.links?.homepage?.[0] }
         ])
       })
     }
-  }, [tokenA])
+  }
 
   return (
     <TOKEN_WRAPPER>
@@ -466,15 +581,12 @@ const TokenContent: FC = () => {
           <TokenTitle>
             {tokenA.name} ({tokenA.symbol})
           </TokenTitle>
-          <div style={{ display: 'flex' }}>
+          <COPY style={{ display: 'flex', alignItems: 'center' }}>
             <SmallerTitle>{truncate(tokenA.address)}</SmallerTitle>
-            <span
-              style={{ marginLeft: '1rem', color: '#999', cursor: 'pointer' }}
-              onClick={() => navigator.clipboard.writeText(tokenA.address)}
-            >
-              copy
+            <span className={`copy-button ${copiedAction ? 'copied' : ''}`} onClick={handleCopyTokenMint}>
+              {copiedAction ? 'Copied!' : 'Copy'}
             </span>
-          </div>
+          </COPY>
         </SubHeader>
       </TokenHeader>
       {tokenDetails.map((detail) => (
@@ -488,7 +600,9 @@ const TokenContent: FC = () => {
 
       <Socials>
         {socials.map((social) => (
-          <SocialsButton onClick={() => window.open(social.link, '_blank')}>{social.name}</SocialsButton>
+          <SocialsButton key={social.id} onClick={() => window.open(social.link, '_blank')}>
+            {social.name}
+          </SocialsButton>
         ))}
       </Socials>
     </TOKEN_WRAPPER>
@@ -526,16 +640,18 @@ const PriceContent: FC<{ clickNo: number; routes: any[] }> = ({ clickNo, routes 
     setOutAmount(out)
 
     const priceDetails = [
-      { name: 'Price Impact', value: '<' + +route.priceImpactPct.toFixed(6) + '%' },
+      { name: 'Price Impact', value: `< ${Number(route.priceImpactPct).toFixed(6)}%` },
       {
         name: 'Minimum Received',
-        value: route.outAmountWithSlippage / 10 ** tokenB.decimals + ' ' + tokenB.symbol
+        value: `${nFormatter(route.outAmountWithSlippage / 10 ** tokenB.decimals, tokenB.decimals)} ${tokenB.symbol}`
       },
       {
-        name: 'Fees paid to Serum LP',
-        value: `${totalLp} ${tokenA.symbol} (${percent} %)`,
+        name: `Fees paid to ${route.marketInfos[0].amm.label || 'GooseFX'} LP`,
+        value: `${nFormatter(totalLp, tokenA.decimals)} ${tokenA.symbol} (${percent} %)`,
         extraValue:
-          route?.marketInfos?.length > 1 ? `${totalLpB} ${tokenB.symbol} (${percentB}%)` : `0 ${tokenB.symbol} (0%)`
+          route?.marketInfos?.length > 1
+            ? `${nFormatter(totalLpB, tokenB.decimals)} ${tokenB.symbol} (${percentB}%)`
+            : `0 ${tokenB.symbol} (0%)`
       },
       { name: 'Transaction fee', value: '0.00005 SOL', icon: 'info' }
     ]
@@ -561,21 +677,24 @@ const PriceContent: FC<{ clickNo: number; routes: any[] }> = ({ clickNo, routes 
       <TokenDetail>
         <TokenTitle>Rate</TokenTitle>
         <SmallTitleFlex>
-          {' '}
           <SMALL_CLICKER_ICON>
             <img src={`/img/crypto/${tokenA.symbol}.svg`} alt="" />
-          </SMALL_CLICKER_ICON>{' '}
-          {inTokenAmount} {tokenA.symbol} ≈{'  '}
+          </SMALL_CLICKER_ICON>
+          <span className={'token-name'}>
+            {inTokenAmount} {tokenA.symbol} ≈{'  '}
+          </span>
           <SMALL_CLICKER_ICON style={{ marginLeft: '0.5rem' }}>
             <img src={`/img/crypto/${tokenB.symbol}.svg`} alt="" />
           </SMALL_CLICKER_ICON>
-          {+outAmount.toFixed(3)} {tokenB.symbol}
+          <span className={'token-name'}>
+            {+outAmount.toFixed(3)} {tokenB.symbol}
+          </span>
         </SmallTitleFlex>
         <SmallTitleFlex>
-          <span style={{ color: cheap ? 'green' : 'red', marginRight: '0.25rem' }}>
-            {outTokenPercentage}% {cheap ? 'cheaper' : 'higher'}
+          <span style={{ color: cheap ? '#5fc8a7' : '#bb3535', marginRight: '0.25rem', fontWeight: '600' }}>
+            {outTokenPercentage || 0}% {cheap ? 'cheaper' : 'higher'}
           </span>
-          <span>than coingecko</span>
+          <span style={{ fontWeight: '600' }}>than coingecko</span>
         </SmallTitleFlex>
       </TokenDetail>
       {details.map((detail) => (
@@ -583,7 +702,7 @@ const PriceContent: FC<{ clickNo: number; routes: any[] }> = ({ clickNo, routes 
           <TokenTitle>
             {detail.name}{' '}
             {detail.icon && (
-              <img
+              <SVGDynamicReverseMode
                 style={{ height: '12px', width: '12px' }}
                 src={`/img/crypto/${detail.icon}.svg`}
                 alt="jupiter-icon"
@@ -604,6 +723,7 @@ const AlternativesContent: FC<{ clickNo: number; setClickNo: (n: number) => void
   clickNo,
   routes
 }) => {
+  const { mode } = useDarkMode()
   const { tokenA, tokenB } = useSwap()
   const [tokens, setTokens] = useState([])
   const [details, setDetails] = useState([])
@@ -631,13 +751,14 @@ const AlternativesContent: FC<{ clickNo: number; setClickNo: (n: number) => void
             ' to ' +
             tokenB.symbol
       const out = +(route.outAmount / 10 ** tokenB.decimals).toFixed(3)
+      const outAmount = +(route.outAmount / 10 ** tokenB.decimals).toFixed(7)
 
       if (no === 0) {
-        return { name, value, price: out, bestPrice: true }
+        return { name, value, price: out, outAmount, bestPrice: true }
       } else if (no === 1) {
-        return { name, value, price: out, fastest: true }
+        return { name, value, price: out, outAmount, fastest: true }
       }
-      return { name, value, price: out }
+      return { name, value, price: out, outAmount }
     }
 
     const details = routes.map((_, k) => getObjectDetails(k))
@@ -647,41 +768,72 @@ const AlternativesContent: FC<{ clickNo: number; setClickNo: (n: number) => void
   const [less, setLess] = useState(false)
 
   return (
-    <ALTERNATIVE_WRAPPER $less={less}>
-      {(!less ? details : details.slice(0, 2)).map((detail, k) => (
-        <AlternativeHeader $clicked={k === clickNo} onClick={() => setClickNo(k)}>
-          <TokenDetail>
-            <TokenTitle>{detail.name}</TokenTitle>
-            <AltSmallTitle>{detail.value}</AltSmallTitle>
-          </TokenDetail>
-          <TokenTitle>{detail.price || null}</TokenTitle>
-          {detail.bestPrice && <BestPrice>Best Price</BestPrice>}
-          {detail.fastest && <BestPrice>Fastest</BestPrice>}
-        </AlternativeHeader>
-      ))}
-      {!less ? (
-        <ShowLess
-          onClick={() => {
-            setLess(true)
-            setClickNo(1)
-          }}
-        >
-          Show Less
-        </ShowLess>
-      ) : (
-        <ShowMore onClick={() => setLess(false)}>Show More</ShowMore>
-      )}
-    </ALTERNATIVE_WRAPPER>
+    <SWAP_ROUTES $less={less || details.length < 4}>
+      <div className="swap-content">
+        {routes?.length < 1
+          ? Array(3)
+              .fill(1)
+              .map(() => (
+                <SkeletonCommon
+                  width="330px"
+                  height="100px"
+                  borderRadius="10px"
+                  style={{ marginRight: '16px', boxShadow: '0 6px 9px 0 rgba(36, 36, 36, 0.1)' }}
+                />
+              ))
+          : (!less ? details : details.slice(0, 2)).map((detail, k) => (
+              <SWAP_ROUTE_ITEM
+                $clicked={k === clickNo}
+                $cover={mode === 'dark' ? '#3c3b3ba6' : '#ffffffa6'}
+                onClick={() => setClickNo(k)}
+              >
+                <div className={'inner-container'}>
+                  <TokenDetail className={'content'}>
+                    <TokenTitle>{detail.name}</TokenTitle>
+                    <AltSmallTitle>{detail.value}</AltSmallTitle>
+                  </TokenDetail>
+                  <TokenTitle className={'price'}>{detail.price || null}</TokenTitle>
+                  {detail.bestPrice && <BestPrice>Best Price</BestPrice>}
+                  {detail.fastest && <BestPrice>Best Choice</BestPrice>}
+                </div>
+              </SWAP_ROUTE_ITEM>
+            ))}
+      </div>
+
+      <div className="action">
+        {!less ? (
+          <ShowLess
+            onClick={() => {
+              setLess(true)
+              setClickNo(1)
+            }}
+          >
+            Show Less
+          </ShowLess>
+        ) : (
+          <ShowMore onClick={() => setLess(false)}>Show More</ShowMore>
+        )}
+      </div>
+    </SWAP_ROUTES>
   )
 }
 
 export const SwapMain: FC = () => {
-  const desktop = window.innerWidth > 1200
-  const { tokenA, tokenB, inTokenAmount, outTokenAmount, priceImpact } = useSwap()
+  const desktop = window.innerWidth > 1300
+  const {
+    tokenA,
+    tokenB,
+    inTokenAmount,
+    outTokenAmount,
+    gofxOutAmount,
+    priceImpact,
+    chosenRoutes,
+    setRoutes,
+    setClickNo,
+    clickNo
+  } = useSwap()
   const { slippage } = useSlippageConfig()
   const [allowed, setallowed] = useState(false)
-  const [clickNo, setClickNo] = useState(1)
-  const [chosenRoutes, setChosenRoutes] = useState([])
   const [inAmountTotal, setInAmountTotal] = useState(0)
 
   const { routes, exchange } = useJupiter({
@@ -693,16 +845,22 @@ export const SwapMain: FC = () => {
   })
 
   useEffect(() => {
+    setRoutes([])
     const inAmountTotal = inTokenAmount * 10 ** (tokenA?.decimals || 0)
     setInAmountTotal(inAmountTotal)
+
+    const supported =
+      CURRENT_SUPPORTED_TOKEN_LIST.includes(tokenA?.symbol) && CURRENT_SUPPORTED_TOKEN_LIST.includes(tokenB?.symbol)
 
     if (tokenA && tokenB) {
       setallowed(true)
     }
 
-    let shortRoutes: any[] = routes?.filter((i) => i.inAmount === inAmountTotal)?.slice(0, 3)
     if (!routes) return
-    if (tokenB && outTokenAmount) {
+    const filteredRoutes = routes?.filter((i) => i.inAmount === inAmountTotal)
+    const shortRoutes: any[] = supported ? filteredRoutes?.slice(0, 3) : filteredRoutes?.slice(0, 4)
+
+    if (tokenB) {
       const GoFxRoute = {
         marketInfos: [
           {
@@ -714,21 +872,17 @@ export const SwapMain: FC = () => {
             }
           }
         ],
-        outAmount: +(outTokenAmount * 10 ** tokenB.decimals).toFixed(7),
-        outAmountWithSlippage: +(outTokenAmount * 10 ** tokenB.decimals * (1 - slippage)).toFixed(7),
-        priceImpactPct: priceImpact
+        outAmount: +((gofxOutAmount || 0) * 10 ** tokenB.decimals).toFixed(7),
+        outAmountWithSlippage: +((gofxOutAmount || 0) * 10 ** tokenB.decimals * (1 - slippage)).toFixed(7),
+        priceImpactPct: priceImpact || 0
       }
 
-      shortRoutes.splice(1, 0, GoFxRoute)
+      if (supported) shortRoutes.splice(1, 0, GoFxRoute)
     }
-    setChosenRoutes(shortRoutes)
-    ///shortRoutes = shortRoutes.sort((a, b) => b.outAmount - a.outAmount)
 
-    // if (clickNo === null) {
-    //   const defaultIndex = shortRoutes.findIndex((route) => route.marketInfos[0].amm.label === 'GooseFX')
-    //   setClickNo(defaultIndex >= 0 ? defaultIndex : 3)
-    // }
-  }, [tokenA, tokenB, routes, slippage, inTokenAmount, outTokenAmount])
+    setRoutes(shortRoutes)
+    //setClickNo(1)
+  }, [tokenA?.symbol, tokenB?.symbol, routes, slippage, inTokenAmount, outTokenAmount])
 
   return (
     <WRAPPER>
@@ -737,16 +891,45 @@ export const SwapMain: FC = () => {
         <SwapContent exchange={exchange} routes={chosenRoutes} clickNo={clickNo} />
         {desktop && allowed && <PriceContent routes={chosenRoutes} clickNo={clickNo} />}
       </INNERWRAPPER>
-      {desktop && allowed && inTokenAmount > 0 && (
+      {allowed && inTokenAmount > 0 && (
         <AlternativesContent routes={chosenRoutes} clickNo={clickNo} setClickNo={setClickNo} />
       )}
     </WRAPPER>
   )
 }
 
+interface RouteParams {
+  tradePair: string
+}
+
 const SwapMainProvider: FC = () => {
-  const { connection } = useSwap()
+  const { connection, setTokenA, setTokenB } = useSwap()
   const wallet = useWallet()
+  const { tokens } = useTokenRegistry()
+  const { tradePair } = useParams<RouteParams>()
+
+  useEffect(() => {
+    const token1 = tradePair
+      ? tokens?.find((i) => i.symbol.toLowerCase() === tradePair?.split('-')[0].toLowerCase())
+      : null
+    const token2 = tradePair
+      ? tokens?.find((i) => i.symbol.toLowerCase() === tradePair?.split('-')[1].toLowerCase())
+      : null
+    const usd = tokens?.find((i) => i.symbol === 'USDC')
+    const sol = tokens?.find((i) => i.symbol === 'SOL')
+
+    if (token1) {
+      setTokenA({ address: token1.address, decimals: token1.decimals, symbol: token1.symbol, name: token1.name })
+    } else if (usd) {
+      setTokenA({ address: usd.address, decimals: usd.decimals, symbol: usd.symbol, name: usd.name })
+    }
+
+    if (token2) {
+      setTokenB({ address: token2.address, decimals: token2.decimals, symbol: token2.symbol, name: token2.name })
+    } else if (sol) {
+      setTokenB({ address: sol.address, decimals: sol.decimals, symbol: sol.symbol, name: sol.name })
+    }
+  }, [setTokenA, setTokenB, tokens, tradePair])
 
   return (
     <JupiterProvider connection={connection} cluster="mainnet-beta" userPublicKey={wallet?.publicKey}>

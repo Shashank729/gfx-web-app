@@ -66,13 +66,21 @@ export function colors(mode: string): Colors {
     text14: mode === 'dark' ? '#b1b1b1' : '#fff',
     text15: mode === 'dark' ? '#b1b1b1' : '#7C7C7C',
     text16: mode === 'dark' ? '#b2b2b2' : '#838383',
+    text17: mode === 'dark' ? '#636363' : '#B9B9B9',
+    text18: mode === 'dark' ? '#727272' : '#BABABA',
+    text19: mode === 'dark' ? '#919191' : '#B6B6B6',
+    text20: mode === 'dark' ? '#636363' : '#b5b5b5',
+    text21: mode === 'dark' ? '#e7e7e7' : '#636363',
+    text22: mode === 'dark' ? '#9C9C9C' : '#3C3C3C',
+    text23: mode === 'dark' ? '#9A9A9A' : '#BABABA',
+    text24: mode === 'dark' ? '#EFEDED' : '#636363',
     text1h: '#7d7d7d',
 
     // backgrounds / greys
     bg0: mode === 'dark' ? '#000' : '#fff',
     bg1: mode === 'dark' ? '#1e1e1e' : white,
     bg2: mode === 'dark' ? '#131313' : '#eeeeee',
-    bg3: mode === 'dark' ? '#2a2a2a' : '#eeeeee',
+    bg3: mode === 'dark' ? '#343434' : '#eeeeee',
     bg4: mode === 'dark' ? '#171717' : '#f4f4f4',
     bg5: mode === 'dark' ? black : '#e0e0e0',
     bg6: mode === 'dark' ? 'black' : 'gray',
@@ -81,15 +89,21 @@ export function colors(mode: string): Colors {
     bg9: mode === 'dark' ? '#2a2a2a' : white,
     bg10: mode === 'dark' ? '#191919' : '#ababab',
     bg11: mode === 'dark' ? '#202020' : '#f4f4f4',
-    bg12: mode === 'dark' ? '#1e1e1e' : '#ababab',
+    bg12: mode === 'dark' ? '#131313' : '#ababab',
     swapSides1:
       mode === 'dark'
         ? 'linear-gradient(256deg, #2a2a2a 1.49%, #181818 93.4%)'
-        : 'background: linear-gradient(256deg, #FDFDFD 1.49%, #EEEEEE 93.4%)',
+        : 'linear-gradient(256deg, #FDFDFD 1.49%, #EEEEEE 93.4%)',
     swapSides2:
       mode === 'dark'
         ? 'linear-gradient(88.61deg, #2a2a2a 1.49%, #181818 93.4%)'
-        : 'background: linear-gradient(88.61deg, #FDFDFD 1.49%, #EEEEEE 93.4%)',
+        : 'linear-gradient(88.61deg, #FDFDFD 1.49%, #EEEEEE 93.4%)',
+    bg13: mode === 'dark' ? '#191919' : '#eee',
+    bg14: mode === 'dark' ? '#1b1b1b' : '#555555',
+    bg15: mode === 'dark' ? '#191919' : '#555555',
+    bg16: mode === 'dark' ? '#1E1E1E' : '#EEEEEE',
+    bg17: mode === 'dark' ? '#343434' : '#FFFFFF',
+
     modalBackground: mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(96, 96, 96, 0.5)',
     bgReward:
       mode === 'dark'
@@ -101,6 +115,7 @@ export function colors(mode: string): Colors {
     grey4: '#121212',
     grey5: '#1a1a1a',
     darkButton: '#000000',
+    opacity: mode === 'dark' ? '0.7' : '1',
     scrollBarColor: mode === 'dark' ? '#434343' : '#e0e0e0',
     boxShadow: mode === 'dark' ? '0 4px 4px 0 rgba(0, 0, 0, 0.25)' : '0 7px 10px 0 rgba(189, 189, 189, 0.25)',
     fade:
@@ -190,7 +205,7 @@ export function colors(mode: string): Colors {
 
     // farm
     farmContainerBg: mode === 'dark' ? '#1e1e1e' : '#eee',
-    farmHeaderBg: mode === 'dark' ? '#181818' : '#313131',
+    farmHeaderBg: '#2a2a2a',
     solPillBg: mode === 'dark' ? '#111' : '#313131',
     stakePillBg: mode === 'dark' ? '#1e1e1e' : 'rgba(49, 49, 49, 0.5)',
     hoverTrFarmBg: mode === 'dark' ? 'rgba(64, 64, 64, 0.7)' : 'rgba(64, 64, 64, 0.05)',
@@ -225,6 +240,9 @@ export function colors(mode: string): Colors {
     bids: '#459631',
     error: '#D60000',
     success: '#27AE60',
+
+    //dexv2
+    rowSeparator: mode === 'dark' ? '#545454' : '#BFBFBF',
 
     // filter
     filterWhiteIcon:
@@ -357,6 +375,8 @@ export function theme(mode: string): DefaultTheme {
         background-color: ${({ theme }) => theme.scrollBarColor};
         border-radius: 20px;
       }
+
+      -ms-overflow-style: none !important;
     `
   }
 }

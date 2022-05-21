@@ -1,29 +1,37 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { Program, Provider } from '@project-serum/anchor'
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { fetchSSLVolumeData, fetchSSLAPR } from '../../api/SSL'
 import { useWallet, WalletContextState } from '@solana/wallet-adapter-react'
 import styled, { css } from 'styled-components'
 import { Table } from 'antd'
 import BN from 'bn.js'
 import { columns } from './Columns'
-import { ExpandedContent } from './ExpandedContent'
-import { getStakingAccountKey, fetchCurrentAmountStaked, CONTROLLER_KEY, CONTROLLER_LAYOUT } from '../../web3'
+import { ExpandedDynamicContent } from './ExpandedDynamicContent'
+import {
+  getStakingAccountKey,
+  fetchCurrentAmountStaked,
+  CONTROLLER_KEY,
+  CONTROLLER_LAYOUT,
+  fetchSSLAmountStaked,
+  getTokenAddresses,
+  getSslAccountKey
+} from '../../web3'
 import { useConnectionConfig, usePriceFeed, useFarmContext } from '../../context'
-import { FarmData } from '../../constants'
-import { ADDRESSES } from '../../web3/ids'
+import { ADDRESSES } from '../../web3'
+import { MorePoolsSoon } from './MorePoolsSoon'
+
 const StakeIDL = require('../../web3/idl/stake.json')
+const SSLIDL = require('../../web3/idl/ssl.json')
 
 //#region styles
-const STYLED_TABLE_LIST = styled(Table)`
+export const STYLED_TABLE_LIST = styled(Table)`
   ${({ theme }) => `
   max-width: 100%;
-  cursor: pointer;
   .ant-table {
-    background: ${theme.bg3};
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
+    background: ${theme.bg17};
+    border-radius: 20px 20px 0px 0px;
     box-shadow: ${theme.tableListBoxShadow};
-    padding-bottom: ${theme.margin(4)};
   }
   .normal-text {
     font-family: Montserrat;
@@ -33,28 +41,24 @@ const STYLED_TABLE_LIST = styled(Table)`
     color: ${theme.text8};
   }
   .ant-table-container table > thead > tr:first-child th:first-child {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 30px;
+    background: none;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 25px;
   }
   .ant-table-container table > thead > tr:first-child th:last-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 30px;
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 25px;
   }
   .ant-table-thead {
-    background-color: #181818;
-    background: ${theme.farmHeaderBg};
-    border-bottom-left-radius: 30px;
-    border-bottom-right-radius: 30px;
-    box-shadow: ${theme.tableHeaderBoxShadow};
+     background: ${theme.farmHeaderBg};
     > tr {
       > th {
         border: none;
+        height: 74px;
         font-size: 16px;
         font-weight: 700;
         color: ${theme.text1};
         background-color: transparent;
-        padding-top: 0;
-        padding-bottom: ${theme.margin(2)};
         &:before {
           content: none !important;
         }
@@ -65,24 +69,18 @@ const STYLED_TABLE_LIST = styled(Table)`
     > tr {
       &.ant-table-expanded-row {
         > td {
-          padding: 0;
+          padding: 0px;
           border-bottom: 0;
         }
       }
       > td {
-        background-color: ${theme.bg3};
-        border-color: #8c8c8c;
+        background-color: ${theme.bg17};
+        border-bottom: 1px solid #BABABA !important;
         padding-bottom: ${theme.margin(4)};
       }
-      &:last-child {
-        td {
-          border: none;
-          &:first-child {
-            border-bottom-left-radius: 20px;
-          }
-          &:last-child {
-            border-bottom-right-radius: 20px;
-          }
+      &.ant-table-row {
+        > td {
+          background-color: ${theme.expendedRowBg} !important;
         }
       }
       &.ant-table-row:hover {
@@ -93,6 +91,9 @@ const STYLED_TABLE_LIST = styled(Table)`
     }
   }
 
+  .hide-row {
+    display: none;
+  }
   .ant-pagination-item {
     a {
       display: inline;
@@ -109,7 +110,7 @@ const STYLED_TABLE_LIST = styled(Table)`
       border-color: ${theme.text6};
     }
   }
-
+  
   .ant-pagination-item-active {
     border-color: transparent;
     a {
@@ -138,7 +139,7 @@ const STYLED_TABLE_LIST = styled(Table)`
 `}
 `
 
-const STYLED_EXPAND_ICON = styled.img<{ expanded: boolean }>`
+export const STYLED_EXPAND_ICON = styled.img<{ expanded: boolean }>`
   ${({ expanded }) => css`
     cursor: pointer;
     transform: ${expanded ? 'rotate(180deg)' : 'rotate(0)'};
@@ -146,15 +147,17 @@ const STYLED_EXPAND_ICON = styled.img<{ expanded: boolean }>`
   `}
 `
 
-interface IFarmData {
+export interface IFarmData {
   id: string
   image: string
   name: string
   earned: number
-  apr: number
-  rewards?: string
+  apr?: number
+  rewards?: number
   liquidity: number
   type: string
+  ptMinted?: number
+  userLiablity?: number
   currentlyStaked: number
 }
 //#endregion
@@ -163,19 +166,40 @@ export const TableList = ({ dataSource }: any) => {
   const { prices } = usePriceFeed()
   const { network, connection } = useConnectionConfig()
   const wallet = useWallet()
-  const { showDeposited } = useFarmContext()
+  const {
+    counter,
+    showDeposited,
+    poolFilter,
+    searchFilter,
+    farmDataContext,
+    setFarmDataContext,
+    farmDataSSLContext,
+    setFarmDataSSLContext
+  } = useFarmContext()
   const [accountKey, setAccountKey] = useState<PublicKey>()
-  const [farmData, setFarmData] = useState<IFarmData[]>(FarmData)
+  const [columnData, setColumnData] = useState(columns)
+  const [farmData, setFarmData] = useState<IFarmData[]>([...farmDataContext, ...farmDataSSLContext])
   const [eKeys, setEKeys] = useState([])
   const PAGE_SIZE = 10
 
   const gofxPrice = useMemo(() => prices['GOFX/USDC'], [prices])
+  const solPrice = useMemo(() => prices['SOL/USDC'], [prices])
 
   const stakeProgram: Program = useMemo(() => {
     return wallet.publicKey
       ? new Program(
           StakeIDL,
           ADDRESSES[network].programs.stake.address,
+          new Provider(connection, wallet as WalletContextState, { commitment: 'finalized' })
+        )
+      : undefined
+  }, [connection, wallet.publicKey])
+
+  const SSLProgram: Program = useMemo(() => {
+    return wallet.publicKey
+      ? new Program(
+          SSLIDL,
+          ADDRESSES[network].programs.ssl.address,
           new Provider(connection, wallet as WalletContextState, { commitment: 'finalized' })
         )
       : undefined
@@ -194,23 +218,89 @@ export const TableList = ({ dataSource }: any) => {
   }, [wallet.publicKey, connection])
 
   useEffect(() => {
+    if (solPrice !== undefined) {
+      fetchSSLData()
+        .then((farmSSLData) => {
+          if (farmSSLData) setFarmDataSSLContext(farmSSLData)
+        })
+        .catch((err) => console.log(err))
+    }
+  }, [accountKey, solPrice?.current, counter])
+
+  useEffect(() => {
     if (gofxPrice !== undefined) {
-      fetchTableData(accountKey)
+      fetchGOFXData(accountKey)
         .then((farmData) => {
           if (farmData.length > 0) {
-            const farmDataStaked =
-              showDeposited && wallet.publicKey ? farmData.filter((fData) => fData.currentlyStaked > 0.0) : farmData
-            setFarmData(farmDataStaked)
+            setFarmDataContext(farmData)
           }
         })
-        .catch((err) => {
-          console.log(err)
-        })
+        .catch((err) => console.log(err))
     }
-  }, [accountKey, gofxPrice, showDeposited])
+  }, [accountKey, gofxPrice, counter])
 
-  const fetchTableData = async (accountKey: PublicKey) => {
-    // pool data
+  useEffect(() => {
+    // this useEffect is to monitor staking and SSL pools button
+    const allFarmData = [...farmDataContext, ...farmDataSSLContext]
+    let farmDataStaked = []
+
+    if (poolFilter !== 'All pools') farmDataStaked = allFarmData.filter((fData) => fData.type === poolFilter)
+    else farmDataStaked = allFarmData
+
+    if (searchFilter)
+      farmDataStaked = farmDataStaked.filter((fData) => {
+        const tokenName = fData.name.toLowerCase()
+        if (tokenName.includes(searchFilter.toLowerCase())) return true
+      })
+
+    if (showDeposited && wallet.publicKey) farmDataStaked = farmDataStaked.filter((fData) => fData.currentlyStaked > 0)
+
+    setFarmData(farmDataStaked)
+  }, [poolFilter, searchFilter, showDeposited, farmDataContext, farmDataSSLContext])
+
+  const fetchSSLData = async () => {
+    let SSLTokenNames = []
+    farmDataSSLContext.map((data) => SSLTokenNames.push(data.name))
+    let tokenAddresses = getTokenAddresses(SSLTokenNames, network)
+    let newFarmDataContext = farmDataSSLContext
+    for (let i = 0; i < SSLTokenNames.length; i++) {
+      let APR = await fetchSSLAPR(tokenAddresses[i].toString())
+      let volumeDays = await fetchSSLVolumeData(tokenAddresses[i].toString())
+      const sslAccountKey = await getSslAccountKey(tokenAddresses[i])
+      let { sslData, liquidityAccount } = await fetchSSLAmountStaked(
+        connection,
+        sslAccountKey,
+        wallet,
+        tokenAddresses[i]
+      )
+      const tokenPrice = SSLTokenNames[i] === 'USDC' ? 1 : solPrice?.current
+      //@ts-ignore
+      let liquidity = sslData.liability + sslData.swappedLiability
+      const ptMinted = liquidityAccount ? liquidityAccount.ptMinted : 0
+      //@ts-ignore
+      const userLiablity = liquidityAccount ? (liquidity * liquidityAccount.share) / sslData.totalShare : 0n
+      const amountDeposited = liquidityAccount ? liquidityAccount.amountDeposited : 0
+      //@ts-ignore
+      const earned = liquidityAccount ? userLiablity - amountDeposited : 0
+      newFarmDataContext = newFarmDataContext.map((data) => {
+        if (data.name === SSLTokenNames[i]) {
+          return {
+            ...data,
+            earned: Math.max(Number(earned) / Math.pow(10, sslData.decimals), 0),
+            apr: APR * 100,
+            liquidity: tokenPrice ? tokenPrice * (Number(liquidity) / Math.pow(10, sslData.decimals)) : 0,
+            currentlyStaked: Number(amountDeposited) / Math.pow(10, sslData.decimals),
+            userLiablity: Number(userLiablity),
+            ptMinted: Number(ptMinted) / Math.pow(10, 9),
+            volume: tokenPrice ? tokenPrice * volumeDays.volume : 0
+          }
+        } else return data
+      })
+    }
+    return newFarmDataContext
+  }
+  const fetchGOFXData = async (accountKey: PublicKey) => {
+    // pool data take this function to context
     const { data: controllerData } = await connection.getAccountInfo(CONTROLLER_KEY)
     const { staking_balance, daily_reward } = await CONTROLLER_LAYOUT.decode(controllerData)
     const LAMPORT = new BN(LAMPORTS_PER_SOL)
@@ -219,20 +309,22 @@ export const TableList = ({ dataSource }: any) => {
 
     // user account data
     const accountData = await fetchCurrentAmountStaked(connection, accountKey, wallet)
-
-    return [
-      {
-        id: '1',
-        image: 'GOFX',
-        name: 'GOFX',
-        earned: accountData.tokenEarned ? accountData.tokenEarned : 0,
-        apr: APR,
-        rewards: '100% GOFX',
-        liquidity: gofxPrice.current * liqidity,
-        type: 'Single Sided',
-        currentlyStaked: accountData.tokenStaked ? accountData.tokenStaked : 0
-      }
-    ]
+    const currentlyStaked = accountData.tokenStaked ? accountData.tokenStaked : 0
+    const dailyRewards = (APR * currentlyStaked) / 365
+    const newFarmDataContext = farmDataContext.map((data) => {
+      if (data.name === 'GOFX') {
+        return {
+          ...data,
+          earned: accountData.tokenEarned ? accountData.tokenEarned : 0,
+          apr: APR * 100,
+          rewards: dailyRewards,
+          liquidity: gofxPrice.current * liqidity,
+          currentlyStaked: currentlyStaked,
+          volume: '-'
+        }
+      } else return data
+    })
+    return newFarmDataContext
   }
 
   const onExpandIcon = (id) => {
@@ -242,27 +334,39 @@ export const TableList = ({ dataSource }: any) => {
     else temp.push(id)
     setEKeys(temp)
   }
-
-  return (
+  const TableData = (
     <div>
       <STYLED_TABLE_LIST
         rowKey="id"
-        columns={columns}
+        columns={columnData}
         dataSource={farmData}
-        pagination={{ pageSize: PAGE_SIZE, position: ['bottomLeft'] }}
+        pagination={false}
         bordered={false}
+        rowClassName={(record: IFarmData) => (eKeys.indexOf(record.id) >= 0 ? 'hide-row' : '')}
         expandedRowKeys={eKeys}
         onRow={(record: IFarmData) => ({
           onClick: () => onExpandIcon(record.id)
         })}
-        expandedRowRender={(rowData) => (
-          <ExpandedContent rowData={rowData} stakeProgram={stakeProgram} stakeAccountKey={accountKey} />
-        )}
+        expandRowByClick={true}
+        expandedRowRender={(rowData: IFarmData) => {
+          return (
+            <ExpandedDynamicContent
+              rowData={rowData}
+              onExpandIcon={onExpandIcon}
+              stakeProgram={stakeProgram}
+              SSLProgram={SSLProgram}
+              stakeAccountKey={accountKey}
+            />
+          )
+        }}
         expandIcon={(ps) => <ExpandIcon {...ps} onClick={onExpandIcon} />}
         expandIconColumnIndex={6}
       />
+      <MorePoolsSoon />
     </div>
   )
+
+  return TableData
 }
 
 const ExpandIcon = (props) => {

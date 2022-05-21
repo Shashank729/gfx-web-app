@@ -6,8 +6,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+* {
+  -ms-overflow-style: none !important;
+}
+
 #root {
   height: 100%;
+  -ms-overflow-style: none !important;
 }
 
 code {
@@ -16,4 +21,15 @@ code {
 
 button {
   cursor: pointer;
+}
+
+.ant-dropdown-menu.ant-dropdown-menu-root {
+  max-height: 500px;
+  overflow-y: auto;
+}
+.up24h {
+  color: #50bb35;
+}
+.down24h {
+  color: #f06565;
 }

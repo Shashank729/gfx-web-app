@@ -3,7 +3,7 @@ import { Input, Slider } from 'antd'
 import { css } from 'styled-components'
 import { FieldHeader, Picker } from './shared'
 import { useDarkMode, useCrypto, useOrder, useTokenRegistry, useAccounts } from '../../../context'
-import { removeFloatingPointError, debounce } from '../../../utils'
+import { removeFloatingPointError } from '../../../utils'
 
 export const Total: FC = () => {
   const { getUIAmount } = useAccounts()
@@ -13,6 +13,10 @@ export const Total: FC = () => {
   const { getTokenInfoFromSymbol } = useTokenRegistry()
 
   const bid = useMemo(() => getBidSymbolFromPair(selectedCrypto.pair), [getBidSymbolFromPair, selectedCrypto.pair])
+  const assetIcon = useMemo(
+    () => `/img/${selectedCrypto.type}/${selectedCrypto.type === 'synth' ? `g${bid}` : bid}.svg`,
+    [bid, selectedCrypto.type]
+  )
   const tokenInfo = useMemo(
     () => getTokenInfoFromSymbol(getSymbolFromPair(selectedCrypto.pair, order.side)),
     [getSymbolFromPair, getTokenInfoFromSymbol, order.side, selectedCrypto.pair]
@@ -31,6 +35,26 @@ export const Total: FC = () => {
       flex: 1;
       margin: 8px;
     }
+    .order-total .ant-slider .ant-slider-rail {
+      height: 10px;
+    }
+
+    .order-total .ant-slider:hover .ant-slider-track {
+      background-color: #9625ae !important;
+    }
+    .order-total .ant-slider:hover .ant-slider-handle:not(.ant-tooltip-open) {
+      background-color: #9625ae;
+    }
+    .order-total .ant-slider-track {
+      background-color: #9625ae;
+    }
+    .order-total .symbol-name {
+      font-size: 15px;
+      line-height: 50px;
+    }
+    .symbol-name .asset-icon {
+      margin-bottom: 3px;
+    }
   `
 
   const handleSliderChange = (total: number) =>
@@ -43,7 +67,7 @@ export const Total: FC = () => {
   return (
     <div className="order-total">
       <style>{localCSS}</style>
-      <FieldHeader>Total</FieldHeader>
+      <FieldHeader>Amount</FieldHeader>
       <Input
         id="total-input"
         maxLength={15}
@@ -56,7 +80,12 @@ export const Total: FC = () => {
         onFocus={() => setFocused('total')}
         pattern="\d+(\.\d+)?"
         placeholder={`Amount to ${order.side}`}
-        suffix={<span>{bid}</span>}
+        suffix={
+          <span className="symbol-name">
+            <img className="asset-icon" src={assetIcon} alt="" />
+            {bid}
+          </span>
+        }
         value={order.total}
       />
       {order.side === 'buy' && (
@@ -67,6 +96,15 @@ export const Total: FC = () => {
             onChange={handleSliderChange}
             step={selectedCrypto.market?.tickSize}
             value={order.total}
+            trackStyle={{
+              height: '10px'
+            }}
+            handleStyle={{
+              height: '20px',
+              width: '20px',
+              background: 'linear-gradient(55.89deg, #8D26AE 21.49%, #D4D3FF 88.89%)',
+              border: '2px solid #FFFFFF'
+            }}
           />
           <span
             onClick={() => {

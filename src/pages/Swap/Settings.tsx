@@ -11,8 +11,13 @@ const BODY = styled(CenteredDiv)`
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-family: Montserrat;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: normal;
+  letter-spacing: normal;
   margin-top: ${({ theme }) => theme.margin(4)};
-  padding-bottom: ${({ theme }) => theme.margin(4)};
+  padding-bottom: ${({ theme }) => theme.margin(2.5)};
 
   > div {
     display: flex;
@@ -29,11 +34,11 @@ const BUTTON = styled.button`
   padding: ${({ theme }) => theme.margin(1.5)};
   border: none;
   ${({ theme }) => theme.roundedBorders}
-  ${({ theme }) => theme.smallShadow}
   background-color: ${({ theme }) => theme.bg10};
   transition: background-color 200ms ease-in-out;
 
-  &:hover {
+  &:hover,
+  &:active {
     background-color: ${({ theme }) => theme.secondary2};
   }
 
@@ -43,18 +48,25 @@ const BUTTON = styled.button`
   }
 `
 
-const SETTING_BUTTON = styled(BUTTON)`
-  width: 30%;
+const SETTING_BUTTON = styled(BUTTON)<{ clicked: boolean }>`
+  width: 166px;
+  height: 50px;
+  background-color: ${({ clicked, theme }) => (clicked ? theme.secondary2 : theme.bg10)};
 `
 
 const SAVE_BUTTON = styled(BUTTON)`
   height: 50px;
   width: 222px;
+  margin-top: 30px;
+
+  &:hover {
+    background-color: #5855ff;
+  }
 `
 
 const TITLE = styled.span`
   font-size: 18px;
-  color: ${({ theme }) => theme.text1};
+  color: ${({ theme }) => theme.text13};
 `
 
 const BUTTON_CONTAINER = styled(CenteredDiv)`
@@ -78,24 +90,31 @@ export const Settings: FC<{ setVisible?: (x: boolean) => void }> = ({ setVisible
       display: flex;
       flex: 5;
       align-items: center;
-      height: 38px;
-      border: ${slippage > 0.0025 ? `2px solid ${slippage > 0.005 ? 'red' : 'orange'}` : 'none'} !important;
+      height: 50px;
+      border: ${slippage > 0.001 ? `2px solid ${slippage > 0.005 ? 'red' : 'orange'}` : 'none'} !important;
       background-color: ${mode === 'dark' ? '#474747' : '#808080'};
       box-shadow: 0 4px 15px 2px rgb(0, 0, 0, ${mode === 'dark' ? '0.25' : '0.1'});
+    }
+
+    .modal-close-icon > img {
+      height: 24px;
+      width: 24px;
     }
   `
 
   const SETTING_INPUT = styled(Input)`
     padding: 1.5rem;
+    height: 50px;
     margin: 1rem 0rem 1.5rem 0rem;
     background-color: ${({ theme }) => theme.bg10 + ' !important'};
+    box-shadow: 0 0 0 0 !important;
   `
 
   return (
     <BODY>
       <div>
         <TITLE>Slippage tolerance</TITLE>
-        <Tooltip>
+        <Tooltip notInherit={true}>
           The minimum amount on how many tokens you will accept, in the event that the price increases or decreases.
         </Tooltip>
       </div>
@@ -103,6 +122,7 @@ export const Settings: FC<{ setVisible?: (x: boolean) => void }> = ({ setVisible
         {[0.1, 0.5, 1].map((item, index) => (
           <SETTING_BUTTON
             key={index}
+            clicked={item === value}
             onClick={() => {
               setValue(item)
             }}

@@ -10,6 +10,10 @@ export const SOCIAL_MEDIAS: { [key: string]: string } = {
 
 export const CURRENT_SUPPORTED_TOKEN_LIST = ['SOL', 'USDC']
 export const FARM_SUPPORTED_TOKEN_LIST = ['SOL', 'USDC', 'GOFX']
+export const MODAL_TYPES = {
+  FEES: 'FEES',
+  REWARDS: 'REWARDS'
+}
 
 export const SUPPORTED_TOKEN_LIST = [
   'AKRO',
@@ -66,48 +70,49 @@ export const SUPPORTED_TOKEN_LIST = [
 
 export const NFT_MARKET_TRANSACTION_FEE: number = 1
 
-export const FarmData = [
+export const stakeTokens = [
   {
     id: '1',
     image: 'GOFX',
     name: 'GOFX',
-    earned: 0,
-    apr: 0,
-
-    rewards: '100% GOFX',
-    liquidity: 0,
-    type: 'Single Sided',
-    currentlyStaked: 0
-  },
+    earned: -1,
+    rewards: 100,
+    liquidity: -1,
+    type: 'Staking',
+    currentlyStaked: -1,
+    volume: '-'
+  }
+]
+export const sslTokens = [
   {
     id: '2',
     image: 'SOL',
     name: 'SOL',
-    earned: 0,
-    apr: 0,
-    liquidity: 0,
-    type: 'Single Sided',
-    currentlyStaked: 0
+    earned: -1,
+    liquidity: -1,
+    type: 'SSL',
+    currentlyStaked: -1
   },
   {
     id: '3',
     image: 'USDC',
     name: 'USDC',
-    earned: 0,
-    apr: 0,
-    liquidity: 0,
-    type: 'Single Sided',
-    currentlyStaked: 0
-  },
-  {
-    id: '4',
-    image: 'MSOL',
-    name: 'MSOL',
-    earned: 0,
-    apr: 0,
-    rewards: '100% GOFX',
-    liquidity: 0,
-    type: 'Single Sided',
-    currentlyStaked: 0
+    earned: -1,
+    liquidity: -1,
+    type: 'SSL',
+    currentlyStaked: -1
   }
 ]
+
+// ,
+//   {
+//     id: '4',
+//     image: 'MSOL',
+//     name: 'MSOL',
+//     earned: 0,
+//     apr: 0,
+//     rewards: 0,
+//     liquidity: 0,
+//     type: 'SSL',
+//     currentlyStaked: 0
+//   }
