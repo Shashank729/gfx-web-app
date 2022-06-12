@@ -316,7 +316,7 @@ export const UpLoadNFT = (): JSX.Element => {
       try {
         const res = await apiClient(NFT_API_BASE).get(
           draftId
-            ? `${NFT_API_ENDPOINTS.DRAFTS}?&draft_id=${draftId}`
+            ? `${NFT_API_ENDPOINTS.DRAFTS}?user_id=${sessionUser?.user_id}&draft_id=${draftId}` // TODO: ask Kiran to change api logic for draftId
             : `${NFT_API_ENDPOINTS.DRAFTS}?user_id=${sessionUser?.user_id}`
         )
         const data = await res.data
@@ -374,7 +374,6 @@ export const UpLoadNFT = (): JSX.Element => {
     }
   }, [draftId, sessionUser, sessionUser?.user_id])
 
-  console.log({ s3Link })
   const handleUploadNFT = () => {
     console.log('Confirm Price')
     setIsConfirmingMintPrice(true)
@@ -528,6 +527,8 @@ export const UpLoadNFT = (): JSX.Element => {
     { name: 'HTML', value: MetadataCategory.HTML, icon: 'domains' }
   ]
 
+  console.log({ disabled })
+
   return nftMintingData === undefined ? (
     <div>...Loading</div>
   ) : (
@@ -550,6 +551,7 @@ export const UpLoadNFT = (): JSX.Element => {
                 nftMintingData={nftMintingData}
                 setNftMintingData={setNftMintingData}
                 setS3Link={setS3Link}
+                setDisabled={setDisabled}
               />
             </div>
             <div>
