@@ -9,11 +9,13 @@ import CollectionCarousel from './CollectionCarousel'
 import { useNFTCollections } from '../../../context'
 import { COLLECTION_TYPES } from '../../../types/nft_collections.d'
 import { SVGDynamicReverseMode } from '../../../styles'
+import { ModalSlide } from '../../../components/ModalSlide'
+import { MODAL_TYPES } from '../../../constants'
 
 const BETA_BANNER = styled.div`
   position: fixed;
   right: 24px;
-  bottom: 72px;
+  bottom: 150px;
   background: linear-gradient(96.79deg, #f7931a 4.25%, #ac1cc7 97.61%);
   border-radius: 10px;
   padding: 1px;
@@ -58,12 +60,26 @@ const BETA_BANNER = styled.div`
   }
 `
 
+const NFT_MENU = styled.div`
+  position: fixed;
+  z-index: 11;
+  height: 150px;
+  width: 150px;
+  right: -50px;
+  bottom: -30px;
+  margin: a;
+  background: linear-gradient(96.79deg, #f7931a 4.25%, #ac1cc7 97.61%);
+  box-shadow: -33px 11px 27px rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+`
 const NFTLandingPage: FC = (): JSX.Element => {
   const { allCollections, fetchAllCollections } = useNFTCollections()
   const [filteredCollections, setFilteredCollections] = useState([])
   const [isAllLoading, setIsAllLoading] = useState<boolean>(true)
   const [betaBanner, setBetaBanner] = useState<boolean>(true)
   const [search, setSearch] = useState<string>('')
+  const [nftMenu, setNFTMenu] = useState<boolean>(true)
+  const [menuPopup, setMenuPopup] = useState<boolean>(false)
 
   useEffect(() => {
     fetchAllCollections().then((res) => setIsAllLoading(false))
@@ -79,8 +95,13 @@ const NFTLandingPage: FC = (): JSX.Element => {
     setFilteredCollections(filtered.slice(0, 5))
   }, [search])
 
+  const displayMenu = () => {
+    if (menuPopup) return <ModalSlide modalType={MODAL_TYPES.NFT_MENU} rewardToggle={setMenuPopup} />
+  }
+
   return (
     <>
+      {displayMenu()}
       <Header
         setFilter={setSearch}
         totalCollections={allCollections}
@@ -105,6 +126,12 @@ const NFTLandingPage: FC = (): JSX.Element => {
         />
         <NFTFooter />
       </div>
+
+      {nftMenu && (
+        <NFT_MENU onClick={() => setMenuPopup((prev) => !prev)}>
+          <h1>Menu</h1>
+        </NFT_MENU>
+      )}
 
       {betaBanner && (
         <BETA_BANNER>
